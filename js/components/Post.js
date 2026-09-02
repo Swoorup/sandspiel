@@ -35,8 +35,10 @@ export function Post({
     )
       .then((res) => res.json())
       .then((data) => {
-        setNextPost({ id: data.id, data });
-      });
+        // detail endpoint returns the 32-char data_id; list posts use the 20-char public id
+        setNextPost({ id: data.id.slice(0, 20), data });
+      })
+      .catch((e) => console.error(e));
   }
 
   function fetchChildren() {
@@ -48,8 +50,10 @@ export function Post({
     })
       .then((res) => res.json())
       .then((data) => {
+        if (!Array.isArray(data)) return;
         setChildrenPosts(data.filter(({ id }) => id !== redundent_child_id));
-      });
+      })
+      .catch((e) => console.error(e));
   }
 
   const hasParent = submission.data?.parent_id;

@@ -11,7 +11,7 @@ const HyperText = ({ text }) => {
           <Link
             to={{
               pathname: "/browse/search/",
-              search: `?title=${t.slice(1)}`,
+              search: `?title=${encodeURIComponent(t.slice(1))}`,
             }}
           >
             {t}

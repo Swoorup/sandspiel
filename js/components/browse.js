@@ -17,15 +17,21 @@ class Submissions extends React.Component {
     let { submissions, browseVotes } = this.props;
     return (
       nextProps.submissions !== submissions ||
-      Object.keys(nextProps.browseVotes).length !==
-        Object.keys(browseVotes).length
+      nextProps.browseVotes !== browseVotes
     );
   }
   render() {
     let { submissions, voteFromBrowse, browseVotes, report } = this.props;
 
-    if (!submissions) {
+    if (submissions === null) {
       return <div style={{ height: "90vh" }}>Loading Submissions...</div>;
+    }
+    if (!Array.isArray(submissions)) {
+      return (
+        <div style={{ height: "90vh" }}>
+          Couldn't load submissions. Please try again later.
+        </div>
+      );
     }
     if (submissions.length == 0) {
       return <div style={{ height: "90vh" }}>Didn't find anything!</div>;
@@ -60,6 +66,7 @@ class Browse extends React.Component {
       browseVotes: {},
       search: "",
     };
+    this.loadRequestId = 0;
   }
   componentWillMount() {
     this.loadSubmissions();
@@ -88,7 +95,13 @@ class Browse extends React.Component {
     let { location } = this.props;
     if (location.search.startsWith("?title=")) {
       // to load deep urls with a search query.
-      this.setState({ search: this.props.location.search.slice(7) });
+      let search = location.search.slice(7);
+      try {
+        search = decodeURIComponent(search);
+      } catch (e) {
+        // leave as-is if malformed
+      }
+      this.setState({ search });
     }
     let param = "";
 
@@ -106,11 +119,9 @@ class Browse extends React.Component {
     }
     if (location.pathname.startsWith("/browse/search/")) {
       param = location.search;
-      if (location.user) {
-        param = location.user;
-      }
     }
 
+    const requestId = ++this.loadRequestId;
     this.setState({ submissions: null });
     fetch(functions._url("api/creations") + param, {
       method: "GET",
@@ -118,12 +129,17 @@ class Browse extends React.Component {
         "Content-Type": "application/json",
       },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((response) => {
+        // ignore responses from requests that have since been superseded
+        if (requestId !== this.loadRequestId) return;
         this.setState({ submissions: response });
-        // this.pause();
       })
       .catch((error) => {
+        if (requestId !== this.loadRequestId) return;
         this.setState({ submissions: false });
         console.error("Error:", error);
       });
@@ -131,16 +147,28 @@ class Browse extends React.Component {
 
   voteFromBrowse(submission) {
     // creations/:id/vote
+    const { currentUser } = firebase.auth();
+    if (!currentUser) {
+      window.alert("Please sign in to vote!");
+      return;
+    }
+    if (!currentUser.emailVerified) {
+      window.alert(`Please verify your email ${currentUser.email} to vote!`);
+      return;
+    }
+    if (this.state.browseVotes[submission.id]) {
+      return;
+    }
+    const previousVotes = this.state.browseVotes;
     this.setState(({ browseVotes }) => ({
       browseVotes: {
-        [submission.id]: submission.data.score + 1,
         ...browseVotes,
+        [submission.id]: submission.data.score + 1,
       },
     }));
-    firebase
-      .auth()
-      .currentUser.getIdToken()
-      .then((token) => {
+    currentUser
+      .getIdToken()
+      .then((token) =>
         fetch(functions._url(`api/creations/${submission.id}/vote`), {
           method: "PUT",
           headers: {
@@ -148,21 +176,30 @@ class Browse extends React.Component {
             Authorization: "Bearer " + token,
           },
         })
-          .then((res) => res.json())
-          .then((data) => {
-            this.setState(({ browseVotes }) => ({
-              browseVotes: { [submission.id]: data.score, ...browseVotes },
-            }));
-          })
-          .catch((e) => {
-            console.error(e);
-          });
+      )
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        this.setState(({ browseVotes }) => ({
+          browseVotes: { ...browseVotes, [submission.id]: data.score },
+        }));
+      })
+      .catch((e) => {
+        console.error(e);
+        // roll back the optimistic vote
+        this.setState({ browseVotes: previousVotes });
       });
   }
   report(id) {
-    firebase
-      .auth()
-      .currentUser.getIdToken()
+    const { currentUser } = firebase.auth();
+    if (!currentUser) {
+      window.alert("Please sign in to report posts!");
+      return;
+    }
+    currentUser
+      .getIdToken()
       .then((token) => {
         fetch(functions._url(`api/creations/${id}/report`), {
           method: "PUT",
@@ -226,7 +263,10 @@ class Browse extends React.Component {
             onChange={(e) => this.setState({ search: e.target.value })}
             onKeyDown={(e) =>
               e.keyCode == 13 && // I think that's enter
-              this.props.history.push(`/browse/search/?title=${search}`)
+              search &&
+              this.props.history.push(
+                `/browse/search/?title=${encodeURIComponent(search)}`
+              )
             }
             placeholder="search"
           />
@@ -234,7 +274,7 @@ class Browse extends React.Component {
             <NavLink
               to={{
                 pathname: "/browse/search/",
-                search: `?title=${search}`,
+                search: `?title=${encodeURIComponent(search)}`,
               }}
             >
               <button>Search</button>

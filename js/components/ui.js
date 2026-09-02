@@ -194,10 +194,14 @@ class Index extends React.Component {
     return false;
   }
   submit() {
-    let { title, data, currentSubmission } = this.state;
+    let { title = "", data, currentSubmission } = this.state;
 
     let { dataURL, cells } = data;
     let { currentUser } = firebase.auth();
+    if (!currentUser) {
+      window.alert("Please sign in to post!");
+      return;
+    }
     title = title.replace(
       "[profile]",
       `https://sandspiel.club/browse/search/?user=${currentUser.uid}`
@@ -210,32 +214,56 @@ class Index extends React.Component {
       cells,
     };
 
-    var postList = JSON.parse(localStorage.getItem("postList") || "[]");
+    const recordPost = () => {
+      var postList = JSON.parse(localStorage.getItem("postList") || "[]");
+      postList = postList.filter((post) => Date.now() - 1000 * 60 * 3 < post);
+      postList.push(Date.now());
+      localStorage.setItem("postList", JSON.stringify(postList));
+    };
 
-    postList = postList.filter((post) => Date.now() - 1000 * 60 * 3 < post);
-    postList.push(Date.now());
-    localStorage.setItem("postList", JSON.stringify(postList));
+    const errorMessages = {
+      202: "This exact creation has already been posted.",
+      301: "Please verify your email address before posting.",
+      302: "Too many posts from your network today. Try again later.",
+      400: "This creation couldn't be validated. Try uploading again.",
+      401: "Your account has been banned from posting.",
+      418: "That title isn't allowed. Please choose another.",
+      429: "You're posting too fast. Wait a few minutes and try again.",
+    };
 
     this.setState({ submitting: true });
-    currentUser.getIdToken().then((token) => {
-      fetch(functions._url("api/creations"), {
-        method: "POST",
-        body: JSON.stringify(payload), // data can be `string` or {object}!
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + token,
-        },
-      })
-        .then((res) => res.json())
-        .then((response) => {
-          console.log("Success:", JSON.stringify(response));
-          this.play();
+    currentUser
+      .getIdToken()
+      .then((token) =>
+        fetch(functions._url("api/creations"), {
+          method: "POST",
+          body: JSON.stringify(payload), // data can be `string` or {object}!
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: "Bearer " + token,
+          },
         })
-        .catch((error) => console.error("Error:", error))
-        .then(() => {
-          this.setState({ submissionMenuOpen: false, submitting: false });
-        });
-    });
+      )
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(
+            errorMessages[res.status] ||
+              `Upload failed (HTTP ${res.status}). Please try again.`
+          );
+        }
+        return res.json();
+      })
+      .then((response) => {
+        console.log("Success:", JSON.stringify(response));
+        recordPost();
+        this.setState({ submissionMenuOpen: false, submitting: false });
+        this.play();
+      })
+      .catch((error) => {
+        console.error("Error:", error);
+        window.alert(error.message || "Upload failed. Please try again.");
+        this.setState({ submitting: false });
+      });
   }
 
   async loadSVG(svgString) {
@@ -285,8 +313,12 @@ class Index extends React.Component {
         "Content-Type": "application/json",
       },
     })
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then((data) => {
+        if (!data || !data.id) throw new Error("submission not found");
         storage
           .refFromURL(
             `gs://sandtable-8d0f7.appspot.com/creations/${data.id}.data.png`
@@ -340,7 +372,8 @@ class Index extends React.Component {
                 };
               })
               .catch((error) => console.error("Error:", error));
-          });
+          })
+          .catch((error) => console.error("Error:", error));
       })
       .catch((error) => {
         console.error("Error:", error);
@@ -348,12 +381,21 @@ class Index extends React.Component {
   }
   incScore() {
     let { currentSubmission } = this.state;
+    if (!currentSubmission) return;
     let { id } = currentSubmission;
+    const { currentUser } = firebase.auth();
+    if (!currentUser) {
+      window.alert("Please sign in to vote!");
+      return;
+    }
+    if (!currentUser.emailVerified) {
+      window.alert(`Please verify your email ${currentUser.email} to vote!`);
+      return;
+    }
     // creations/:id/vote
-    firebase
-      .auth()
-      .currentUser.getIdToken()
-      .then((token) => {
+    currentUser
+      .getIdToken()
+      .then((token) =>
         fetch(functions._url(`api/creations/${id}/vote`), {
           method: "PUT",
           headers: {
@@ -361,17 +403,21 @@ class Index extends React.Component {
             Authorization: "Bearer " + token,
           },
         })
-          .then((res) => res.json())
-          .then((data) => {
-            if (currentSubmission != null) {
-              this.setState({
-                currentSubmission: { ...currentSubmission, data },
-              });
-            }
-          })
-          .catch((e) => {
-            console.error(e);
+      )
+      .then((res) => {
+        if (res.status === 301) throw new Error("You already voted for this!");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (this.state.currentSubmission?.id === id) {
+          this.setState({
+            currentSubmission: { ...this.state.currentSubmission, data },
           });
+        }
+      })
+      .catch((e) => {
+        console.error(e);
       });
   }
 
