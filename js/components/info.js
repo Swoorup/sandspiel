@@ -10,6 +10,27 @@ const Info = () => {
       <hr />
       <br />
       <p>
+        <a href="https://apps.apple.com/app/id6757886943" target="_blank">
+          <img
+            src="assets/App_Store_Badge.svg.png"
+            alt="Download on the App Store"
+            className="app-store-badge"
+          />
+        </a>
+      </p>
+      <p>
+        See also:{" "}
+        <a href="https://studio.sandspiel.club/" target="_blank">
+          Sandspiel Studio
+        </a>{" "}
+        and{" "}
+        <a href="https://orb.farm" target="_blank">
+          orb.farm
+        </a>
+        <img src="https://orb.farm/assets/favicon.ico" className="link-icon" />
+      </p>
+      <br />
+      <p>
         Welcome, and thanks for coming by! I hope that you enjoy exploring this
         small game, and it brings you some calm.{" "}
       </p>

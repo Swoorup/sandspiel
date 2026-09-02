@@ -368,59 +368,9 @@ img {
   margin-top: 40px;
 }
 
-#PullTabContent {
-  position: fixed;
-  z-index: 9;
-  top: 10px;
-  right: 0px;
-  font-size: 1.5rem;
-  width: 500px;
-  max-width: 80vw;
-  background-color: white;
-  border-radius: 8px;
-  transform: translate(calc(100%), 0px);
-  /* transition: transform 200ms cubic-bezier(0.74, -0.41, 0.18, 1.44); */
-  transition: transform 200ms cubic-bezier(0.56, -0.36, 0.5, 1.22);
-
-  /* cubic-bezier(0.75, -0.5, 0, 1.75); */
-  filter: drop-shadow(0 10px 5px rgba(0, 0, 0, 0.1));
-  border: 1px ridge black;
-  box-sizing: border-box;
-  border-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACoAAAAqCAYAAADFw8lbAAAAAXNSR0IArs4c6QAAALpJREFUWEftmeEOgCAIhPP9H7qWy6aE2NblwF0/o+j8BNrOtPWv3Yj9GUpacvXm9aBboT1h1mKQZM3v1yLCCZ1FcLQbBVzWoxF1K1RuuTehmfwpKpxQLyRl7WaQNVEKHbX3IE6iHwE+XidREm3+qWgcgHysUQDEJgWJkii7HlQDbCYQyDsNiZIoxxOoBthMIJALjKeyBC9GRGM1hfKeCklvYyquPyqJyq6dVbPrefiqL4keii/yxT5nOgCOTVANWl/DLwAAAABJRU5ErkJggg==")
-    14 / 14px / 0 round;
-
-  border-width: 14px;
-  border-style: solid;
-}
 #logo {
   margin: auto;
   display: block;
-}
-#PullTabContent.open {
-  transform: translate(10px, 0px);
-}
-#PullTabContent.dismissed {
-  transform: translate(calc(100% + 50px), 0px);
-}
-#PullTabContent span {
-  /* text-align: center; */
-  width: 305px;
-  display: block;
-  margin: auto;
-  position: relative;
-  z-index: 4;
-}
-#PullTab {
-  box-sizing: border-box;
-  position: absolute;
-  margin: auto;
-  left: -81.5px;
-  transform: translateY(-30%);
-  z-index: 7;
-  width: 70px;
-  border-top: none;
-  font-size: 30px;
-  filter: drop-shadow(-3px 0px 2px #5865f2);
 }
 .CTA {
   border: 2px solid #f3f3f4;
@@ -437,10 +387,6 @@ img {
 .CTA:hover {
   transform: rotate(2deg) scale(1.01);
   filter: drop-shadow(1px 3px 6px rgba(0, 0, 0, 0.1));
-}
-#PullTab img {
-  width: 100%;
-  transform: translate(0px, -100px);
 }
 .discord {
   margin: auto;

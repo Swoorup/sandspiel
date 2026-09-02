@@ -10,7 +10,6 @@ import { height, universe, width, reset } from "../index.js";
 import { snapshot, pallette } from "../render.js";
 import { functions, storage } from "../api.js";
 import SignInButton from "./signinButton.js";
-import Promotab from "./promotab";
 import { svgToImageData, rgbaToSpecies } from "../convertSVG";
 
 import Menu from "./menu";
@@ -384,7 +383,6 @@ class Index extends React.Component {
         : "";
     return (
       <React.Fragment>
-        <Promotab />
         <button
           onClick={() => this.togglePause()}
           className={paused ? "selected" : ""}

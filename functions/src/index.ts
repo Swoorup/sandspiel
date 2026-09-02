@@ -283,8 +283,12 @@ app.get("/creations", async (req: express.Request, res) => {
     } else if (parent) {
       browse = await pgPool.query(
         `
-          SELECT * from creations 
+          SELECT * from creations as c
           WHERE parent_id = $1
+          AND NOT EXISTS(
+            SELECT FROM rulings as r
+            WHERE r.id = c.id AND r.bad = 'yes'
+          )
           ORDER BY timestamp DESC
           LIMIT 150
           `,

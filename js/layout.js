@@ -43,9 +43,6 @@ let resize = () => {
   canvas2.style = canvasStyle;
   const adSlot = document.getElementsByClassName("adslot_1")[0];
   if (adSlot) adSlot.style = adStyle;
-  let btnHeight = ui.getBoundingClientRect().height;
-  const pullTabContent = document.getElementById("PullTabContent");
-  if (pullTabContent) pullTabContent.style.top = btnHeight + "px";
 };
 
 if (document.readyState === 'loading') {
