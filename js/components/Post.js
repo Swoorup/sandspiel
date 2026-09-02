@@ -10,6 +10,7 @@ export function Post({
   voteFromBrowse,
   browseVotes,
   report,
+  checkVotes,
   redundent_parent_id,
   redundent_child_id,
 }) {
@@ -36,7 +37,9 @@ export function Post({
       .then((res) => res.json())
       .then((data) => {
         // detail endpoint returns the 32-char data_id; list posts use the 20-char public id
-        setNextPost({ id: data.id.slice(0, 20), data });
+        const id = data.id.slice(0, 20);
+        setNextPost({ id, data });
+        if (checkVotes) checkVotes([id]);
       })
       .catch((e) => console.error(e));
   }
@@ -51,12 +54,19 @@ export function Post({
       .then((res) => res.json())
       .then((data) => {
         if (!Array.isArray(data)) return;
-        setChildrenPosts(data.filter(({ id }) => id !== redundent_child_id));
+        const children = data.filter(({ id }) => id !== redundent_child_id);
+        setChildrenPosts(children);
+        if (checkVotes) checkVotes(children.map(({ id }) => id));
       })
       .catch((e) => console.error(e));
   }
 
   const hasParent = submission.data?.parent_id;
+  // browseVotes[id] is `true` for posts liked before this session, or the
+  // updated score for posts liked during it.
+  const vote = browseVotes[submission.id];
+  const liked = Boolean(vote);
+  const score = typeof vote === "number" ? vote : submission.data.score;
   return (
     <div className="thread">
       {nextPost && (
@@ -65,6 +75,7 @@ export function Post({
           voteFromBrowse={voteFromBrowse}
           browseVotes={browseVotes}
           report={report}
+          checkVotes={checkVotes}
           redundent_child_id={submission.id}
         />
       )}
@@ -118,11 +129,12 @@ export function Post({
             <span>{displayTime} </span>
 
             <button
-              className="heart"
+              className={classnames("heart", { liked })}
+              title={liked ? "You liked this" : "Like"}
               onClick={() => voteFromBrowse(submission)}
             >
-              {browseVotes[submission.id] || submission.data.score}
-              {browseVotes[submission.id] ? "🖤" : "♡"}
+              {score}
+              {liked ? "🖤" : "♡"}
             </button>
           </span>
 
@@ -153,6 +165,7 @@ export function Post({
             voteFromBrowse={voteFromBrowse}
             browseVotes={browseVotes}
             report={report}
+            checkVotes={checkVotes}
             redundent_parent_id={submission.id}
           />
         ))}

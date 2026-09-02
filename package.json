@@ -51,7 +51,7 @@
     "dat.gui": "^0.7.5",
     "firebase": "^8.2.8",
     "firebase-admin": "^9.3.0",
-    "firebase-tools": "^7.11.0",
+    "firebase-tools": "^15.29.0",
     "gh-pages": "^2.1.1",
     "glsl-hsv2rgb": "^1.0.0",
     "glsl-noise": "0.0.0",

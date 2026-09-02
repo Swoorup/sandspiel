@@ -6,6 +6,7 @@ import timeago from "timeago.js";
 import { functions } from "../api.js";
 import SignInScreen from "./signin.js";
 import { Post } from "./Post";
+import { fetchVotedIds } from "../votes.js";
 
 export const ago = timeago();
 
@@ -21,7 +22,8 @@ class Submissions extends React.Component {
     );
   }
   render() {
-    let { submissions, voteFromBrowse, browseVotes, report } = this.props;
+    let { submissions, voteFromBrowse, browseVotes, report, checkVotes } =
+      this.props;
 
     if (submissions === null) {
       return <div style={{ height: "90vh" }}>Loading Submissions...</div>;
@@ -47,6 +49,7 @@ class Submissions extends React.Component {
               voteFromBrowse={voteFromBrowse}
               browseVotes={browseVotes}
               report={report}
+              checkVotes={checkVotes}
             />
           );
         })}
@@ -70,6 +73,20 @@ class Browse extends React.Component {
   }
   componentWillMount() {
     this.loadSubmissions();
+  }
+  componentDidMount() {
+    // auth resolves asynchronously after page load; once we know who the user
+    // is, mark the posts they've already liked.
+    this.unregisterAuthObserver = firebase.auth().onAuthStateChanged((user) => {
+      if (user && Array.isArray(this.state.submissions)) {
+        this.checkVotes(this.state.submissions.map((s) => s.id));
+      }
+    });
+  }
+  componentWillUnmount() {
+    if (this.unregisterAuthObserver) {
+      this.unregisterAuthObserver();
+    }
   }
   componentDidUpdate(prevProps) {
     if (
@@ -137,12 +154,29 @@ class Browse extends React.Component {
         // ignore responses from requests that have since been superseded
         if (requestId !== this.loadRequestId) return;
         this.setState({ submissions: response });
+        if (Array.isArray(response)) {
+          this.checkVotes(response.map((s) => s.id));
+        }
       })
       .catch((error) => {
         if (requestId !== this.loadRequestId) return;
         this.setState({ submissions: false });
         console.error("Error:", error);
       });
+  }
+
+  // Marks any of the given ids that the current user has already liked.
+  checkVotes(ids) {
+    fetchVotedIds(ids).then((voted) => {
+      if (voted.size === 0) return;
+      this.setState(({ browseVotes }) => {
+        const next = { ...browseVotes };
+        voted.forEach((id) => {
+          if (next[id] === undefined) next[id] = true;
+        });
+        return { browseVotes: next };
+      });
+    });
   }
 
   voteFromBrowse(submission) {
@@ -286,6 +320,7 @@ class Browse extends React.Component {
           voteFromBrowse={(submission) => this.voteFromBrowse(submission)}
           browseVotes={browseVotes}
           report={(id) => this.report(id)}
+          checkVotes={(ids) => this.checkVotes(ids)}
         />
       </React.Fragment>
     );

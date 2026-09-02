@@ -11,6 +11,7 @@ import { snapshot, pallette } from "../render.js";
 import { functions, storage } from "../api.js";
 import SignInButton from "./signinButton.js";
 import { svgToImageData, rgbaToSpecies } from "../convertSVG";
+import { fetchVotedIds } from "../votes.js";
 
 import Menu from "./menu";
 
@@ -81,6 +82,32 @@ class Index extends React.Component {
     }
 
     this.load();
+  }
+
+  componentDidMount() {
+    this.unregisterAuthObserver = firebase.auth().onAuthStateChanged((user) => {
+      if (user && this.state.currentSubmission) {
+        this.checkLiked(this.state.currentSubmission.id);
+      }
+    });
+  }
+
+  componentWillUnmount() {
+    if (this.unregisterAuthObserver) {
+      this.unregisterAuthObserver();
+    }
+  }
+
+  // Marks the loaded submission as liked if the signed-in user already voted.
+  checkLiked(id) {
+    fetchVotedIds([id]).then((voted) => {
+      const { currentSubmission } = this.state;
+      if (voted.has(id) && currentSubmission && currentSubmission.id === id) {
+        this.setState({
+          currentSubmission: { ...currentSubmission, liked: true },
+        });
+      }
+    });
   }
 
   componentDidUpdate(prevProps) {
@@ -331,6 +358,7 @@ class Index extends React.Component {
               .then((res) => res.blob())
               .then((blob) => {
                 this.setState({ currentSubmission: { id, data } });
+                this.checkLiked(id);
 
                 var url = URL.createObjectURL(blob);
                 var img = new Image();
@@ -381,7 +409,7 @@ class Index extends React.Component {
   }
   incScore() {
     let { currentSubmission } = this.state;
-    if (!currentSubmission) return;
+    if (!currentSubmission || currentSubmission.liked) return;
     let { id } = currentSubmission;
     const { currentUser } = firebase.auth();
     if (!currentUser) {
@@ -405,14 +433,26 @@ class Index extends React.Component {
         })
       )
       .then((res) => {
-        if (res.status === 301) throw new Error("You already voted for this!");
+        if (res.status === 301) {
+          // already voted: just reflect that
+          if (this.state.currentSubmission?.id === id) {
+            this.setState({
+              currentSubmission: { ...this.state.currentSubmission, liked: true },
+            });
+          }
+          return null;
+        }
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        if (this.state.currentSubmission?.id === id) {
+        if (data && this.state.currentSubmission?.id === id) {
           this.setState({
-            currentSubmission: { ...this.state.currentSubmission, data },
+            currentSubmission: {
+              ...this.state.currentSubmission,
+              data,
+              liked: true,
+            },
           });
         }
       })
@@ -517,8 +557,14 @@ class Index extends React.Component {
         </span> */}
         {this.state.currentSubmission && (
           <div className="submission-title">
-            <button onClick={() => this.incScore()}>
-              +♡{this.state.currentSubmission.data.score}{" "}
+            <button
+              onClick={() => this.incScore()}
+              title={
+                this.state.currentSubmission.liked ? "You liked this" : "Like"
+              }
+            >
+              {this.state.currentSubmission.liked ? "🖤" : "+♡"}
+              {this.state.currentSubmission.data.score}{" "}
             </button>
             {this.state.currentSubmission.data.title}
           </div>
