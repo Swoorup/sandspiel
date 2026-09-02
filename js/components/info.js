@@ -12,7 +12,7 @@ const Info = () => {
       <p>
         <a href="https://apps.apple.com/app/id6757886943" target="_blank">
           <img
-            src="assets/App_Store_Badge.svg.png"
+            src="/assets/App_Store_Badge.svg.png"
             alt="Download on the App Store"
             className="app-store-badge"
           />
