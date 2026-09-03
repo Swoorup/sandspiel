@@ -9,7 +9,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getStorage } from "firebase-admin/storage";
 import express from "express";
 
-import admins from "./admin";
+import { isAdmin } from "./admin";
 import { defineSecret, defineString } from "firebase-functions/params";
 
 // Upload validation is provided by an optional module that is not part of the
@@ -735,7 +735,7 @@ app.put("/creations/:id/judge", validateFirebaseIdToken, async (req, res) => {
   // const ip = req.header("x-appengine-user-ip");
   let { ruling } = req.query;
   const { email } = req["user"];
-  if (!admins.includes(email)) {
+  if (!isAdmin(email)) {
     res.status(403).send("Not Admin");
     return;
   }
@@ -785,7 +785,7 @@ app.put("/creations/:id/judge", validateFirebaseIdToken, async (req, res) => {
 app.put("/creations/:id/ban-ip", validateFirebaseIdToken, async (req, res) => {
   const id = req.params.id;
   const { email } = req["user"];
-  if (!admins.includes(email)) {
+  if (!isAdmin(email)) {
     res.status(403).send("Not Admin");
     return;
   }
